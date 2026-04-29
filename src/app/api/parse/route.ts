@@ -30,26 +30,20 @@ export async function POST(req: Request) {
     }
     Твоя задача — расписать в массиве competitors детальный анализ по каждой ссылке/конкуренту.`;
 
-    const requestReferer = req.headers.get('referer');
-    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-
     const openRouterHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey.trim()}`,
       'X-Title': 'OmniHub',
     };
 
-    const referer = requestReferer || configuredSiteUrl;
-    if (referer) {
-      openRouterHeaders['Referer'] = referer;
-    }
+    openRouterHeaders['Referer'] = 'https://omnihub.su';
     console.log('OpenRouter headers:', JSON.stringify(openRouterHeaders, null, 2));
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: openRouterHeaders,
       body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
+        model: 'deepseek/deepseek-chat',
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: systemPrompt }]
       })
