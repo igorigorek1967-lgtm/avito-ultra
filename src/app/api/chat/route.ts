@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       ...messages,
     ];
 
-    const requestOrigin = req.headers.get('origin');
+    const requestReferer = req.headers.get('referer');
     const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
     const openRouterHeaders: Record<string, string> = {
@@ -34,10 +34,11 @@ export async function POST(req: Request) {
       'X-Title': 'OmniHub',
     };
 
-    const referer = requestOrigin || configuredSiteUrl;
+    const referer = requestReferer || configuredSiteUrl;
     if (referer) {
-      openRouterHeaders['HTTP-Referer'] = referer;
+      openRouterHeaders['Referer'] = referer;
     }
+    console.log('OpenRouter headers:', JSON.stringify(openRouterHeaders, null, 2));
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     // Handle specific auth errors from OpenRouter
     if (response.status === 401 || response.status === 403) {
       const errorText = await response.text().catch(() => '');
-      console.error('OpenRouter auth error:', response.status, errorText);
+      console.error('OpenRouter auth error full response:', response.status, errorText);
       return NextResponse.json(
         {
           error: `Ошибка авторизации OpenRouter (${response.status}): API-ключ недействителен или истёк. Проверьте OPENROUTER_API_KEY в .env.local`,
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
-      console.error('Ошибка от OpenRouter:', response.status, errorText);
+      console.error('Полный текст ошибки от OpenRouter:', response.status, errorText);
       return NextResponse.json(
         { error: `Ошибка ИИ-провайдера (${response.status})`, details: errorText },
         { status: response.status }

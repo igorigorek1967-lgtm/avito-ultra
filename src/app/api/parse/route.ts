@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     }
     Твоя задача — расписать в массиве competitors детальный анализ по каждой ссылке/конкуренту.`;
 
-    const requestOrigin = req.headers.get('origin');
+    const requestReferer = req.headers.get('referer');
     const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
     const openRouterHeaders: Record<string, string> = {
@@ -39,10 +39,11 @@ export async function POST(req: Request) {
       'X-Title': 'OmniHub',
     };
 
-    const referer = requestOrigin || configuredSiteUrl;
+    const referer = requestReferer || configuredSiteUrl;
     if (referer) {
-      openRouterHeaders['HTTP-Referer'] = referer;
+      openRouterHeaders['Referer'] = referer;
     }
+    console.log('OpenRouter headers:', JSON.stringify(openRouterHeaders, null, 2));
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
 
     if (response.status === 401 || response.status === 403) {
       const errorText = await response.text().catch(() => '');
-      console.error('OpenRouter auth error:', response.status, errorText);
+      console.error('OpenRouter auth error full response:', response.status, errorText);
       return NextResponse.json(
         {
           error: `Ошибка авторизации OpenRouter (${response.status}): проверьте OPENROUTER_API_KEY и настройки реферера`,
@@ -66,7 +67,11 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!response.ok) throw new Error('Сбой API нейросети');
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error('Полный текст ошибки от OpenRouter:', response.status, errorText);
+      throw new Error(`Сбой API нейросети (${response.status}): ${errorText}`);
+    }
 
     const data = await response.json();
     const parsedResult = JSON.parse(data.choices[0].message.content);
