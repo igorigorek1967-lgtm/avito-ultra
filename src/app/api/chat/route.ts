@@ -25,15 +25,20 @@ export async function POST(req: Request) {
       ...messages,
     ];
 
+    const requestOrigin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL;
+    const openRouterHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'X-Title': 'OmniHub',
+    };
+
+    if (requestOrigin) {
+      openRouterHeaders['HTTP-Referer'] = requestOrigin;
+    }
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        // Required by OpenRouter to identify the app
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://omnihub.su',
-        'X-Title': 'OmniHub',
-      },
+      headers: openRouterHeaders,
       body: JSON.stringify({
         model: 'openai/gpt-4o-mini',
         messages: formattedMessages,

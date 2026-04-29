@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      console.error('OPENROUTER_API_KEY is not set in environment variables.');
+      return NextResponse.json(
+        { error: 'Сервер не настроен: отсутствует OPENROUTER_API_KEY. Добавьте ключ в .env.local' },
+        { status: 500 }
+      );
+    }
+
     const body = await req.json();
     const { niche, links } = body;
 
@@ -21,20 +30,38 @@ export async function POST(req: Request) {
     }
     Твоя задача — расписать в массиве competitors детальный анализ по каждой ссылке/конкуренту.`;
 
+    const requestOrigin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL;
+    const openRouterHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'X-Title': 'OmniHub',
+    };
+
+    if (requestOrigin) {
+      openRouterHeaders['HTTP-Referer'] = requestOrigin;
+    }
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://omnihub.su',
-        'X-Title': 'OmniHub',
-      },
+      headers: openRouterHeaders,
       body: JSON.stringify({
         model: 'openai/gpt-4o-mini',
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: systemPrompt }]
       })
     });
+
+    if (response.status === 401 || response.status === 403) {
+      const errorText = await response.text().catch(() => '');
+      console.error('OpenRouter auth error:', response.status, errorText);
+      return NextResponse.json(
+        {
+          error: `Ошибка авторизации OpenRouter (${response.status}): проверьте OPENROUTER_API_KEY и настройки реферера`,
+          details: errorText,
+        },
+        { status: 401 }
+      );
+    }
 
     if (!response.ok) throw new Error('Сбой API нейросети');
 
