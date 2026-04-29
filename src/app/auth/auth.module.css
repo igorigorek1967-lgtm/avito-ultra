@@ -1,0 +1,133 @@
+/* Full-screen black background, vertically + horizontally centered */
+.page {
+  min-height: 100vh;
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* The form card — no visible border, just centered content */
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 340px;
+  gap: 0;
+}
+
+/* "Регистрация" / "Вход" heading */
+.title {
+  font-size: 20px;
+  font-weight: 500;
+  color: #fff;
+  margin-bottom: 18px;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+/* Dark input fields */
+.input {
+  width: 100%;
+  background-color: #1c1c2e;
+  border: 1px solid #2a2a3e;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+
+.input::placeholder {
+  color: #6b7280;
+}
+
+.input:focus {
+  border-color: #f59e0b;
+}
+
+.input:disabled {
+  opacity: 0.6;
+}
+
+/* Highlighted border when there's a validation error */
+.inputError {
+  border-color: #f59e0b;
+}
+
+/* Error / validation message */
+.errorText {
+  width: 100%;
+  font-size: 12px;
+  color: #f59e0b;
+  margin-bottom: 10px;
+  text-align: left;
+  padding: 0 2px;
+}
+
+/* Orange CTA button */
+.submitBtn {
+  width: 100%;
+  background-color: #f59e0b;
+  color: #000;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 13px 0;
+  border-radius: 6px;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  transition: background-color 0.15s, opacity 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background-color: #d97706;
+}
+
+.submitBtn:active:not(:disabled) {
+  background-color: #b45309;
+}
+
+.submitBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* "Уже есть аккаунт? Войти" link-style button */
+.toggleBtn {
+  background: none;
+  border: none;
+  color: #f59e0b;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.toggleBtn:hover:not(:disabled) {
+  color: #fbbf24;
+  text-decoration: underline;
+}
+
+.toggleBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Loading spinner dot */
+.loadingDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
