@@ -25,15 +25,18 @@ export async function POST(req: Request) {
       ...messages,
     ];
 
-    const requestOrigin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL;
+    const requestOrigin = req.headers.get('origin');
+    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
     const openRouterHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey.trim()}`,
       'X-Title': 'OmniHub',
     };
 
-    if (requestOrigin) {
-      openRouterHeaders['HTTP-Referer'] = requestOrigin;
+    const referer = requestOrigin || configuredSiteUrl;
+    if (referer) {
+      openRouterHeaders['HTTP-Referer'] = referer;
     }
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
