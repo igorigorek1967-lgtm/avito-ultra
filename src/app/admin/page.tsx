@@ -20,6 +20,15 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+
+const normalizeSupabaseAuthMessage = (message: string) => {
+  const raw = (message || '').toLowerCase();
+  if (raw.includes('invalid api key') || raw.includes('apikey')) {
+    return 'Ошибка конфигурации Supabase: неверный NEXT_PUBLIC_SUPABASE_ANON_KEY или ключ не соответствует NEXT_PUBLIC_SUPABASE_URL. Проверьте .env.local и перезапустите dev-сервер.';
+  }
+  return message;
+};
+
 // ====================================================================
 // ПОЛНЫЕ ЭТАЛОННЫЕ РЕГЛАМЕНТЫ (БЕЗ СОКРАЩЕНИЙ И СЖАТИЙ)
 // ====================================================================
@@ -494,7 +503,7 @@ export default function OmniHubSystem() {
         : await supabase.auth.signUp({ email: authEmail, password: authPass });
         
       if (error) {
-        setAuthMsg({ type: 'error', text: error.message });
+        setAuthMsg({ type: 'error', text: normalizeSupabaseAuthMessage(error.message) });
       } else {
         checkUser();
       }
@@ -514,7 +523,7 @@ export default function OmniHubSystem() {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(authEmail);
       if (error) {
-        setAuthMsg({ type: 'error', text: error.message });
+        setAuthMsg({ type: 'error', text: normalizeSupabaseAuthMessage(error.message) });
       } else {
         setAuthMsg({ type: 'success', text: 'Ссылка отправлена на вашу почту!' });
       }
