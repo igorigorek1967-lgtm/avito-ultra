@@ -204,8 +204,8 @@ export default function OmniHubSystem() {
 
   // === 9. ЭКОНОМИКА И ПАРТНЕРСКИЕ ССЫЛКИ ===
   const [refBalance, setRefBalance] = useState(14500);
-  const [totalSpentTokens, setTotalSpentTokens] = useState(84200);
-  const [currentCostRub, setCurrentCostRub] = useState(168.40);
+  const [totalSpentTokens, setTotalSpentTokens] = useState(0);
+  const [currentCostRub, setCurrentCostRub] = useState(0);
   
   // Возвращенные переменные для генератора ссылок (чтобы не было красного экрана)
   const [shortenerOrigUrl, setShortenerOrigUrl] = useState('');
@@ -261,8 +261,9 @@ export default function OmniHubSystem() {
     acc.cost += Number(l.cost_rub ?? 0);
     acc.revenue += Number(l.revenue_rub ?? 0);
     acc.profit += Number(l.profit_rub ?? 0);
+    acc.tokens += Number(l.total_tokens ?? 0);
     return acc;
-  }, { cost: 0, revenue: 0, profit: 0 });
+  }, { cost: 0, revenue: 0, profit: 0, tokens: 0 });
   const roi = totals.cost > 0 ? (totals.profit / totals.cost) * 100 : 0;
 
   // ====================================================================
@@ -432,13 +433,20 @@ export default function OmniHubSystem() {
   };
 
   useEffect(() => {
+    setTotalSpentTokens(totals.tokens);
+    setCurrentCostRub(totals.cost);
+  }, [totals.tokens, totals.cost]);
+
+  useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
       .channel(`chat-logs-${user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_logs' }, (payload) => {
-        setChatLogs((prev) => [payload.new, ...prev].slice(0, 1000));
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_logs', filter: `user_id=eq.${user.id}` }, (payload) => {
+        setChatLogs((prev) => [payload.new, ...prev.filter((item) => item.id !== payload.new.id)].slice(0, 1000));
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') fetchChatLogs();
+      });
     return () => {
       supabase.removeChannel(channel);
     };
@@ -975,9 +983,6 @@ export default function OmniHubSystem() {
       setSelectedAgent((p: any) => ({...p, message_spent: newSpentAmount}));
       setAgents(prevList => prevList.map(a => a.id === selectedAgent.id ? { ...a, message_spent: newSpentAmount } : a));
 
-      setTotalSpentTokens(p => p + 150);
-      setCurrentCostRub(p => p + 0.3);
-      
     } catch (e) {
       console.error('Критическая ошибка handleTestChat:', e);
       setTestMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Ошибка сервера. Проверьте настройки API-ключа.' }]);
@@ -2078,8 +2083,14 @@ export default function OmniHubSystem() {
           {/* ======================================================= */}
           {activeTab === 'analytics' && (
             <div className="max-w-6xl mx-auto animate-in fade-in space-y-6">
-              <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-                <h3 className="font-black">Аналитика</h3>
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-xl font-black text-slate-800 flex items-center gap-2"><BarChart2 className="text-blue-600"/> Сквозная Аналитика</h2>
+                  <button className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-slate-50 shadow-sm">
+                    <Download size={16}/> Выгрузить отчет
+                  </button>
+                </div>
+                <p className="text-sm text-slate-500">Трекинг трафика, юнит-экономика и лидогенерация.</p>
                 <div className="flex flex-wrap gap-2 text-xs">
                   <button onClick={()=>setAnalyticsPeriod('week')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'week' ? 'bg-blue-600 text-white' : ''}`}>Неделя</button>
                   <button onClick={()=>setAnalyticsPeriod('month')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'month' ? 'bg-blue-600 text-white' : ''}`}>Месяц</button>
@@ -2088,21 +2099,12 @@ export default function OmniHubSystem() {
                   <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} className="border rounded px-2 py-1"/>
                   <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} className="border rounded px-2 py-1"/>
                 </div>
-                <div className="grid md:grid-cols-4 gap-2 text-sm">
-                  <div>Общий расход: <b>{totals.cost.toFixed(2)} ₽</b></div>
-                  <div>Общий оборот: <b>{totals.revenue.toFixed(2)} ₽</b></div>
-                  <div>Чистая прибыль: <b>{totals.profit.toFixed(2)} ₽</b></div>
-                  <div>ROI: <b>{roi.toFixed(2)}%</b></div>
+                <div className="grid md:grid-cols-4 gap-3 text-sm">
+                  <div className="rounded-xl bg-slate-50 p-3">Общий расход: <b>{totals.cost.toFixed(2)} ₽</b></div>
+                  <div className="rounded-xl bg-slate-50 p-3">Общий оборот: <b>{totals.revenue.toFixed(2)} ₽</b></div>
+                  <div className="rounded-xl bg-slate-50 p-3">Чистая прибыль: <b>{totals.profit.toFixed(2)} ₽</b></div>
+                  <div className="rounded-xl bg-slate-50 p-3">ROI: <b>{roi.toFixed(2)}%</b></div>
                 </div>
-              </div>
-              <div className="flex justify-between items-end mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><BarChart2 className="text-blue-600"/> Сквозная Аналитика</h2>
-                  <p className="text-sm text-slate-500 mt-1">Трекинг трафика, юнит-экономика и лидогенерация.</p>
-                </div>
-                <button className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-slate-50 shadow-sm">
-                  <Download size={16}/> Выгрузить отчет
-                </button>
               </div>
 
               {/* KPI Карточки */}
@@ -2195,7 +2197,7 @@ export default function OmniHubSystem() {
                              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-[0_0_15px_rgba(74,222,128,0.5)]"></div>
                              <span className="text-[10px] font-black uppercase tracking-widest text-green-400">Зеленый коридор</span>
                           </div>
-                          <h3 className="text-3xl font-black mb-3">ROI: 1450%</h3>
+                          <h3 className="text-3xl font-black mb-3">ROI: {roi.toFixed(2)}%</h3>
                           <p className="text-blue-100 text-xs leading-relaxed max-w-sm opacity-80">
                              Поздравляем! Каждый вложенный в ИИ-агента 1 рубль приносит вам 14.5 рублей прибыли. Конверсия стабильна.
                           </p>
@@ -2445,7 +2447,12 @@ export default function OmniHubSystem() {
                 <h3 className="font-black mb-3">Логи (Админ) / Полигон</h3>
                 {chatLogs.slice(0, 60).map((l: any) => (
                   <div key={l.id} className="mb-3 pb-3 border-b border-slate-100 text-xs">
-                    <div className="text-slate-500">{new Date(l.created_at).toLocaleString()} · {l.source}</div>
+                    <div className="text-slate-500 flex items-center gap-2 flex-wrap">
+                      <span>{new Date(l.created_at).toLocaleString()}</span>
+                      {l.source === 'guide' && <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 font-black text-[10px]">ПОДДЕРЖКА</span>}
+                      {l.source === 'polygon' && <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-black text-[10px]">ТЕСТ / ПОЛИГОН</span>}
+                      {!['guide', 'polygon'].includes(l.source) && <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-black text-[10px]">{l.source}</span>}
+                    </div>
                     <div className="text-slate-700">{l.user_message}</div>
                     <div className="font-bold text-slate-900">{l.bot_response}</div>
                   </div>
