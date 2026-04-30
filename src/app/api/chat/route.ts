@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const supabaseAdmin =
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     const profitRub = revenueRub - costRub;
 
     if (logToChatLogs && !supabaseAdmin) {
-      console.error('Supabase logging is enabled, but SUPABASE URL / SERVICE ROLE KEY are not configured.');
+      console.error('Supabase logging is enabled, but NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not configured.');
     }
 
     if (logToChatLogs && supabaseAdmin) {
