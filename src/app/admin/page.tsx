@@ -358,25 +358,27 @@ export default function OmniHubSystem() {
     }
   }, [activeTab, agents.length]);
 
-  // Загрузка реальной аватарки пользователя при старте сессии
+  // Загрузка аватара из profiles при старте сессии
   useEffect(() => {
-    if (user) {
-      const fetchAvatar = async () => {
-        const { data } = supabase.storage.from('avatars').getPublicUrl(`${user.id}/avatar.jpg`);
-        if (data && data.publicUrl) {
-          try {
-            const res = await fetch(data.publicUrl, { method: 'HEAD' });
-            if (res.ok) {
-              setAvatarUrl(data.publicUrl);
-            }
-          } catch(e) {
-            console.warn('Avatar check failed');
-          }
-        }
-      };
-      fetchAvatar();
-    }
-  }, [user]);
+    if (!user?.id) return;
+
+    const fetchAvatar = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.warn('Profile avatar fetch failed:', error.message);
+        return;
+      }
+
+      setAvatarUrl(data?.avatar_url || null);
+    };
+
+    fetchAvatar();
+  }, [user?.id]);
 
   // ====================================================================
   // ФУНКЦИИ И ОБРАБОТЧИКИ
@@ -435,6 +437,20 @@ export default function OmniHubSystem() {
       .channel(`chat-logs-${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_logs' }, (payload) => {
         setChatLogs((prev) => [payload.new, ...prev].slice(0, 1000));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`logs-${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'logs' }, (payload) => {
+        setSystemLogs((prev: any[]) => [payload.new, ...prev].slice(0, 500));
       })
       .subscribe();
     return () => {
@@ -527,9 +543,18 @@ export default function OmniHubSystem() {
       }
 
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      
-      // Добавляем таймштамп к URL, чтобы браузер сбросил кэш и сразу показал новое фото
-      setAvatarUrl(`${data.publicUrl}?t=${new Date().getTime()}`);
+      const updatedAvatarUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
+
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: updatedAvatarUrl })
+        .eq('id', user?.id);
+
+      if (profileUpdateError) {
+        throw profileUpdateError;
+      }
+
+      setAvatarUrl(updatedAvatarUrl);
       alert("Фото профиля успешно обновлено!");
 
     } catch (error: any) {
@@ -913,7 +938,10 @@ export default function OmniHubSystem() {
         },
         body: JSON.stringify({
           systemPrompt: selectedAgent.system_prompt,
-          messages: newMsgs
+          messages: newMsgs,
+          logToChatLogs: true,
+          userId: user?.id ?? null,
+          source: 'polygon'
         })
       });
 
