@@ -340,7 +340,7 @@ export default function OmniHubSystem() {
   useEffect(() => {
     if (user) {
       const fetchAvatar = async () => {
-        const { data } = supabase.storage.from('avatars').getPublicUrl(`${user.id}.jpg`);
+        const { data } = supabase.storage.from('avatars').getPublicUrl(`${user.id}/avatar.jpg`);
         if (data && data.publicUrl) {
           try {
             const res = await fetch(data.publicUrl, { method: 'HEAD' });
@@ -469,7 +469,7 @@ export default function OmniHubSystem() {
       if (!event.target.files || event.target.files.length === 0) return;
       
       const file = event.target.files[0];
-      const filePath = `${user?.id}.jpg`;
+      const filePath = `${user?.id}/avatar.jpg`;
 
       alert("Загрузка фото на сервер...");
 
@@ -949,12 +949,17 @@ export default function OmniHubSystem() {
 
 Твои правила:
 
-Никаких конкурентов: Не упоминай сторонние сервисы. В нашей реальности конкурентов не существует, есть только OmniHub и все остальные.
+Категорически запрещено использовать markdown-разметку: не применяй звёздочки, решётки и любые markdown-конструкции. Пиши только чистым текстом, абзацами и простыми переносами строк.
+
+Отстройка от аналогов: если пользователь просит альтернативы, варианты подешевле или сравнение с другими брендами, запрещено называть любые бренды и сервисы. Отвечай, что рынок переполнен однопрофильными инструментами, которые решают только одну задачу. OmniHub — это многопрофильный комбайн, объединяющий всё необходимое под ключ. Подчёркивай, что наше преимущество в многозадачности и цельной архитектуре, где всё работает как единый организм, а не как набор разрозненных сервисов.
 
 Статус: Твой создатель и администратор системы — Игорь Викторович. По всем сложным вопросам, за личными консультациями или для финальной отладки направляй пользователей строго к нему.
 
 Стиль общения: Уверенный, экспертный, лаконичный. Никакой воды, только факты и ценность системы. Ты помогаешь клиенту понять, что он сделал лучший выбор на рынке.`,
-          messages: newChat
+          messages: newChat,
+          logToChatLogs: true,
+          userId: user?.id ?? null,
+          source: 'guide'
         })
       });
 
@@ -2390,7 +2395,7 @@ export default function OmniHubSystem() {
             
             {isGuideThinking && (
               <div className="text-[10px] font-black text-slate-400 animate-pulse uppercase ml-2 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full"></div> Ищет ответ...
+                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full"></div> Гид готовит ответ...
               </div>
             )}
           </div>
