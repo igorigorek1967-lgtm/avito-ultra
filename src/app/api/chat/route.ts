@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin =
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    ? createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+    : null;
 
 export async function POST(req: Request) {
-  // Guard: API key must be set server-side
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.error('OPENROUTER_API_KEY is not set in environment variables.');
@@ -13,13 +22,12 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { messages, systemPrompt } = body;
+    const { messages, systemPrompt, logToChatLogs, userId, source } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Неверный формат сообщений' }, { status: 400 });
     }
 
-    // System prompt goes first, then the conversation history
     const formattedMessages = [
       { role: 'system', content: systemPrompt || 'Ты — полезный ИИ-ассистент.' },
       ...messages,
@@ -34,7 +42,6 @@ export async function POST(req: Request) {
       'HTTP-Referer': siteUrl,
       Referer: siteUrl,
     };
-    console.log('OpenRouter headers:', JSON.stringify(openRouterHeaders, null, 2));
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -45,7 +52,6 @@ export async function POST(req: Request) {
       }),
     });
 
-    // Handle specific auth errors from OpenRouter
     if (response.status === 401 || response.status === 403) {
       const errorText = await response.text().catch(() => '');
       console.error('OpenRouter auth error full response:', response.status, errorText);
@@ -75,8 +81,6 @@ export async function POST(req: Request) {
     }
 
     const data = await response.json();
-
-    // Validate response shape
     const content = data?.choices?.[0]?.message?.content;
     if (content === undefined || content === null) {
       console.error('Unexpected OpenRouter response shape:', JSON.stringify(data));
@@ -86,19 +90,24 @@ export async function POST(req: Request) {
       );
     }
 
-    // Return in the standard OpenAI-compatible shape
+    if (logToChatLogs && supabaseAdmin) {
+      const latestUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content ?? null;
+      const { error: logError } = await supabaseAdmin.from('chat_logs').insert({
+        user_id: userId ?? null,
+        source: source ?? 'guide',
+        user_message: latestUserMessage,
+        assistant_message: content,
+        payload: { messages_count: messages.length },
+      });
+      if (logError) {
+        console.error('chat_logs insert error:', logError.message);
+      }
+    }
+
     return NextResponse.json({
-      choices: [
-        {
-          message: {
-            content,
-          },
-        },
-      ],
-      // Pass through usage stats if available (for token counting)
+      choices: [{ message: { content } }],
       usage: data?.usage ?? null,
     });
-
   } catch (error: any) {
     console.error('Критическая ошибка сервера (API Chat):', error);
     return NextResponse.json({ error: 'Внутренняя ошибка сервера: ' + (error?.message ?? 'unknown') }, { status: 500 });
