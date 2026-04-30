@@ -59,6 +59,24 @@ interface AuthContextValue {
   refreshProfile: () => Promise<void>;
 }
 
+function mapSupabaseAuthError(error: AuthError | Error): Error {
+  const rawMessage = (error.message || "").toLowerCase();
+
+  if (rawMessage.includes("invalid api key") || rawMessage.includes("apikey")) {
+    return new Error(
+      "Ошибка конфигурации Supabase: неверный NEXT_PUBLIC_SUPABASE_ANON_KEY или он не соответствует NEXT_PUBLIC_SUPABASE_URL. Проверьте .env.local и перезапустите сервер."
+    );
+  }
+
+  if (rawMessage.includes("failed to fetch") || rawMessage.includes("network")) {
+    return new Error(
+      "Нет соединения с Supabase. Проверьте NEXT_PUBLIC_SUPABASE_URL, интернет и блокировки CORS/Firewall."
+    );
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 // ─────────────────────────────────────────────
 // Context
 // ─────────────────────────────────────────────
@@ -162,8 +180,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (error) {
+          const normalizedError = mapSupabaseAuthError(error);
           console.error("[AuthContext] signIn error:", error.message);
-          return { error };
+          return { error: normalizedError };
         }
 
         return { error: null };
@@ -195,8 +214,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (error) {
+          const normalizedError = mapSupabaseAuthError(error);
           console.error("[AuthContext] signUp error:", error.message);
-          return { error };
+          return { error: normalizedError };
         }
 
         // The `profiles` row is created automatically by the database trigger
