@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   BrainCircuit, Mic, MessageSquare, Link2, CreditCard, ShieldAlert, 
   Activity, Users, LogOut, Lock, Zap, ChevronRight, CheckCircle2, 
@@ -203,6 +203,16 @@ export default function OmniHubSystem() {
   const [isAnalyzingLogs, setIsAnalyzingLogs] = useState(false);
 
   // === 9. ЭКОНОМИКА И ПАРТНЕРСКИЕ ССЫЛКИ ===
+
+
+  const sortedChatLogs = useMemo(() => {
+    return [...chatLogs].sort((a: any, b: any) => {
+      const timeDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      return (b.id ?? 0) - (a.id ?? 0);
+    });
+  }, [chatLogs]);
+
   const [refBalance, setRefBalance] = useState(14500);
   const [totalSpentTokens, setTotalSpentTokens] = useState(0);
   const [currentCostRub, setCurrentCostRub] = useState(0);
@@ -430,6 +440,7 @@ export default function OmniHubSystem() {
       .from('chat_logs')
       .select('*')
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .limit(1000);
     if (data) setChatLogs(data);
   };
@@ -443,7 +454,7 @@ export default function OmniHubSystem() {
     if (!user?.id) return;
     const channel = supabase
       .channel(`chat-logs-${user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_logs', filter: `user_id=eq.${user.id}` }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_logs' }, (payload) => {
         setChatLogs((prev) => [payload.new, ...prev.filter((item) => item.id !== payload.new.id)].slice(0, 1000));
       })
       .subscribe((status) => {
@@ -2455,7 +2466,7 @@ export default function OmniHubSystem() {
               <h2 className="text-2xl font-black text-slate-800">Технические Логи</h2>
               <div className="bg-white rounded-2xl border border-slate-200 p-4 max-h-[35vh] overflow-y-auto">
                 <h3 className="font-black mb-3">Логи (Админ) / Полигон</h3>
-                {chatLogs.slice(0, 60).map((l: any) => (
+                {sortedChatLogs.slice(0, 60).map((l: any) => (
                   <div key={l.id} className="mb-3 pb-3 border-b border-slate-100 text-xs">
                     <div className="text-slate-500 flex items-center gap-2 flex-wrap">
                       <span>{new Date(l.created_at).toLocaleString()}</span>
