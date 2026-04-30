@@ -90,14 +90,33 @@ export async function POST(req: Request) {
       );
     }
 
-    if (logToChatLogs && supabaseAdmin) {
+    const usage = data?.usage ?? {};
+    const promptTokens = Number(usage?.prompt_tokens ?? 0);
+    const completionTokens = Number(usage?.completion_tokens ?? 0);
+    const totalTokens = Number(usage?.total_tokens ?? promptTokens + completionTokens);
+    const usdPerPromptToken = 0.27 / 1_000_000;
+    const usdPerCompletionToken = 1.1 / 1_000_000;
+    const usdToRub = Number(process.env.OPENROUTER_USD_TO_RUB ?? 90);
+    const markup = Number(process.env.OPENROUTER_CLIENT_MARKUP ?? 3.2);
+    const costRub = (promptTokens * usdPerPromptToken + completionTokens * usdPerCompletionToken) * usdToRub;
+    const revenueRub = costRub * markup;
+    const profitRub = revenueRub - costRub;
+
+    if (supabaseAdmin) {
       const latestUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content ?? null;
       const { error: logError } = await supabaseAdmin.from('chat_logs').insert({
         user_id: userId ?? null,
         source: source ?? 'guide',
         user_message: latestUserMessage,
         bot_response: content,
-        payload: { messages_count: messages.length },
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+        cost_rub: Number(costRub.toFixed(6)),
+        revenue_rub: Number(revenueRub.toFixed(6)),
+        profit_rub: Number(profitRub.toFixed(6)),
+        model: data?.model ?? 'deepseek/deepseek-chat',
+        status_code: response.status,
       });
       if (logError) {
         console.error('chat_logs insert error:', logError.message);
@@ -106,7 +125,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       choices: [{ message: { content } }],
-      usage: data?.usage ?? null,
+      usage: usage ?? null,
+      economics: {
+        cost_rub: Number(costRub.toFixed(6)),
+        revenue_rub: Number(revenueRub.toFixed(6)),
+        profit_rub: Number(profitRub.toFixed(6)),
+      },
     });
   } catch (error: any) {
     console.error('Критическая ошибка сервера (API Chat):', error);
