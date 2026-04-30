@@ -30,13 +30,15 @@ export async function POST(req: Request) {
     }
     Твоя задача — расписать в массиве competitors детальный анализ по каждой ссылке/конкуренту.`;
 
+    const siteUrl = process.env.OPENROUTER_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
     const openRouterHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey.trim()}`,
       'X-Title': 'OmniHub',
+      'HTTP-Referer': siteUrl,
+      Referer: siteUrl,
     };
-
-    openRouterHeaders['Referer'] = 'https://omnihub.su';
     console.log('OpenRouter headers:', JSON.stringify(openRouterHeaders, null, 2));
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
