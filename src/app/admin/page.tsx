@@ -222,6 +222,19 @@ export default function OmniHubSystem() {
     });
   }, [chatLogs]);
 
+  const adminFilteredChatLogs = useMemo(() => {
+    const sourceFilter = adminLogTab === 'support'
+      ? 'guide'
+      : adminLogTab === 'polygon'
+        ? 'polygon'
+        : null;
+
+    return sortedChatLogs.filter((log: any) => {
+      if (!sourceFilter) return true;
+      return log.source === sourceFilter;
+    });
+  }, [sortedChatLogs, adminLogTab]);
+
   const [refBalance, setRefBalance] = useState(14500);
   const [totalSpentTokens, setTotalSpentTokens] = useState(0);
   const [currentCostRub, setCurrentCostRub] = useState(0);
@@ -2474,8 +2487,24 @@ export default function OmniHubSystem() {
             <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in">
               <h2 className="text-2xl font-black text-slate-800">Технические Логи</h2>
               <div className="bg-white rounded-2xl border border-slate-200 p-4 max-h-[35vh] overflow-y-auto">
-                <h3 className="font-black mb-3">Логи (Админ) / Полигон</h3>
-                {sortedChatLogs.slice(0, 60).map((l: any) => (
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h3 className="font-black">Логи (Админ)</h3>
+                  <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                    <button
+                      onClick={() => setAdminLogTab('polygon')}
+                      className={`px-3 py-1.5 text-xs font-black rounded-lg transition ${adminLogTab === 'polygon' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                    >
+                      Полигон
+                    </button>
+                    <button
+                      onClick={() => setAdminLogTab('support')}
+                      className={`px-3 py-1.5 text-xs font-black rounded-lg transition ${adminLogTab === 'support' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                    >
+                      Поддержка
+                    </button>
+                  </div>
+                </div>
+                {adminFilteredChatLogs.slice(0, 60).map((l: any) => (
                   <div key={l.id} className="mb-3 pb-3 border-b border-slate-100 text-xs">
                     <div className="text-slate-500 flex items-center gap-2 flex-wrap">
                       <span>{new Date(l.created_at).toLocaleString()}</span>
