@@ -96,7 +96,7 @@ export async function POST(req: Request) {
         user_id: userId ?? null,
         source: source ?? 'guide',
         user_message: latestUserMessage,
-        assistant_message: content,
+        bot_response: content,
         payload: { messages_count: messages.length },
       });
       if (logError) {
