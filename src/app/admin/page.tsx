@@ -190,6 +190,10 @@ export default function OmniHubSystem() {
 
   // === 8. ЛОГИ И АНАЛИТИКА ===
   const [systemLogs, setSystemLogs] = useState<any[]>([]);
+  const [chatLogs, setChatLogs] = useState<any[]>([]);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<'week'|'month'|'quarter'|'custom'>('week');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [adminLogTab, setAdminLogTab] = useState<'system'|'support'|'polygon'>('support');
   const [dbErrorAlert, setDbErrorAlert] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<any>(null); 
@@ -242,6 +246,24 @@ export default function OmniHubSystem() {
   ]);
   
   const userRefLink = `omnihub.su/invite/${user?.id?.substring(0,8) || 'd8e1b3c9'}`;
+  const now = new Date();
+  const periodFrom =
+    analyticsPeriod === 'week' ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    : analyticsPeriod === 'month' ? new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    : analyticsPeriod === 'quarter' ? new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+    : (customFrom ? new Date(customFrom) : new Date(0));
+  const periodTo = analyticsPeriod === 'custom' && customTo ? new Date(customTo) : now;
+  const periodLogs = chatLogs.filter((l) => {
+    const dt = new Date(l.created_at);
+    return dt >= periodFrom && dt <= periodTo;
+  });
+  const totals = periodLogs.reduce((acc, l) => {
+    acc.cost += Number(l.cost_rub ?? 0);
+    acc.revenue += Number(l.revenue_rub ?? 0);
+    acc.profit += Number(l.profit_rub ?? 0);
+    return acc;
+  }, { cost: 0, revenue: 0, profit: 0 });
+  const roi = totals.cost > 0 ? (totals.profit / totals.cost) * 100 : 0;
 
   // ====================================================================
   // ЭФФЕКТЫ И ЖИЗНЕННЫЙ ЦИКЛ КОМПОНЕНТА
@@ -381,6 +403,7 @@ export default function OmniHubSystem() {
       
       initialLoadDone.current = true;
       fetchLogs();
+      fetchChatLogs();
       // EPIC 4: загружаем подписку пользователя
       loadSubscription(user.id);
     }
@@ -396,6 +419,28 @@ export default function OmniHubSystem() {
       setDbErrorAlert(`ОШИБКА БД: ${error.message}`);
     }
   };
+
+  const fetchChatLogs = async () => {
+    const { data } = await supabase
+      .from('chat_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1000);
+    if (data) setChatLogs(data);
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`chat-logs-${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_logs' }, (payload) => {
+        setChatLogs((prev) => [payload.new, ...prev].slice(0, 1000));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const handleAuth = async () => {
     if (!authEmail || authPass.length < 8) {
@@ -2005,6 +2050,23 @@ export default function OmniHubSystem() {
           {/* ======================================================= */}
           {activeTab === 'analytics' && (
             <div className="max-w-6xl mx-auto animate-in fade-in space-y-6">
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                <h3 className="font-black">Аналитика</h3>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <button onClick={()=>setAnalyticsPeriod('week')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'week' ? 'bg-blue-600 text-white' : ''}`}>Неделя</button>
+                  <button onClick={()=>setAnalyticsPeriod('month')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'month' ? 'bg-blue-600 text-white' : ''}`}>Месяц</button>
+                  <button onClick={()=>setAnalyticsPeriod('quarter')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'quarter' ? 'bg-blue-600 text-white' : ''}`}>Квартал</button>
+                  <button onClick={()=>setAnalyticsPeriod('custom')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'custom' ? 'bg-blue-600 text-white' : ''}`}>Период</button>
+                  <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} className="border rounded px-2 py-1"/>
+                  <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} className="border rounded px-2 py-1"/>
+                </div>
+                <div className="grid md:grid-cols-4 gap-2 text-sm">
+                  <div>Общий расход: <b>{totals.cost.toFixed(2)} ₽</b></div>
+                  <div>Общий оборот: <b>{totals.revenue.toFixed(2)} ₽</b></div>
+                  <div>Чистая прибыль: <b>{totals.profit.toFixed(2)} ₽</b></div>
+                  <div>ROI: <b>{roi.toFixed(2)}%</b></div>
+                </div>
+              </div>
               <div className="flex justify-between items-end mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><BarChart2 className="text-blue-600"/> Сквозная Аналитика</h2>
@@ -2351,6 +2413,16 @@ export default function OmniHubSystem() {
           {activeTab === 'admin' && (
             <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in">
               <h2 className="text-2xl font-black text-slate-800">Технические Логи</h2>
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 max-h-[35vh] overflow-y-auto">
+                <h3 className="font-black mb-3">Логи (Админ) / Полигон</h3>
+                {chatLogs.slice(0, 60).map((l: any) => (
+                  <div key={l.id} className="mb-3 pb-3 border-b border-slate-100 text-xs">
+                    <div className="text-slate-500">{new Date(l.created_at).toLocaleString()} · {l.source}</div>
+                    <div className="text-slate-700">{l.user_message}</div>
+                    <div className="font-bold text-slate-900">{l.bot_response}</div>
+                  </div>
+                ))}
+              </div>
               <div className="bg-slate-900 rounded-[32px] overflow-hidden max-h-[60vh] overflow-y-auto custom-scrollbar p-6">
                 {systemLogs.map((log, i) => (
                   <div key={i} className="mb-4 pb-4 border-b border-slate-800">
