@@ -265,6 +265,8 @@ export default function OmniHubSystem() {
     return acc;
   }, { cost: 0, revenue: 0, profit: 0, tokens: 0 });
   const roi = totals.cost > 0 ? (totals.profit / totals.cost) * 100 : 0;
+  const sanitizePlainText = (text: string | null | undefined) =>
+    String(text ?? '').replace(/[*_#]/g, '');
 
   // ====================================================================
   // ЭФФЕКТЫ И ЖИЗНЕННЫЙ ЦИКЛ КОМПОНЕНТА
@@ -1827,7 +1829,7 @@ export default function OmniHubSystem() {
                      {testMessages.map((m, i) => (
                        <div key={i} className={`flex ${m.role==='user'?'justify-end':'justify-start'}`}>
                           <div className={`max-w-[85%] p-4 rounded-2xl text-sm shadow-sm ${m.role==='user'?'bg-blue-600 text-white rounded-br-none':'bg-white border border-slate-200 text-slate-800 rounded-bl-none leading-relaxed'}`}>
-                             {m.content}
+                             {sanitizePlainText(m.content)}
                           </div>
                        </div>
                      ))}
@@ -2082,28 +2084,36 @@ export default function OmniHubSystem() {
           {/* ВКЛАДКА АНАЛИТИКИ И ROI */}
           {/* ======================================================= */}
           {activeTab === 'analytics' && (
-            <div className="max-w-6xl mx-auto animate-in fade-in space-y-6">
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-xl font-black text-slate-800 flex items-center gap-2"><BarChart2 className="text-blue-600"/> Сквозная Аналитика</h2>
-                  <button className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-slate-50 shadow-sm">
-                    <Download size={16}/> Выгрузить отчет
-                  </button>
-                </div>
-                <p className="text-sm text-slate-500">Трекинг трафика, юнит-экономика и лидогенерация.</p>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <button onClick={()=>setAnalyticsPeriod('week')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'week' ? 'bg-blue-600 text-white' : ''}`}>Неделя</button>
-                  <button onClick={()=>setAnalyticsPeriod('month')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'month' ? 'bg-blue-600 text-white' : ''}`}>Месяц</button>
-                  <button onClick={()=>setAnalyticsPeriod('quarter')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'quarter' ? 'bg-blue-600 text-white' : ''}`}>Квартал</button>
-                  <button onClick={()=>setAnalyticsPeriod('custom')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'custom' ? 'bg-blue-600 text-white' : ''}`}>Период</button>
-                  <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} className="border rounded px-2 py-1"/>
-                  <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} className="border rounded px-2 py-1"/>
-                </div>
-                <div className="grid md:grid-cols-4 gap-3 text-sm">
-                  <div className="rounded-xl bg-slate-50 p-3">Общий расход: <b>{totals.cost.toFixed(2)} ₽</b></div>
-                  <div className="rounded-xl bg-slate-50 p-3">Общий оборот: <b>{totals.revenue.toFixed(2)} ₽</b></div>
-                  <div className="rounded-xl bg-slate-50 p-3">Чистая прибыль: <b>{totals.profit.toFixed(2)} ₽</b></div>
-                  <div className="rounded-xl bg-slate-50 p-3">ROI: <b>{roi.toFixed(2)}%</b></div>
+            <div className="max-w-6xl mx-auto animate-in fade-in space-y-6"> 
+              <div className="bg-white rounded-2xl border border-slate-200 p-4"> 
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-stretch"> 
+                  <div className="xl:col-span-4 grid grid-cols-3 gap-2"> 
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3"> 
+                      <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Расход</div> 
+                      <div className="text-base font-black text-rose-600 mt-1">{totals.cost.toFixed(2)} ₽</div> 
+                    </div>
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3"> 
+                      <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Прибыль</div> 
+                      <div className="text-base font-black text-emerald-600 mt-1">{totals.profit.toFixed(2)} ₽</div> 
+                    </div>
+                    <div className="rounded-xl bg-slate-900 p-3"> 
+                      <div className="text-[10px] text-slate-300 font-black uppercase tracking-widest">ROI</div> 
+                      <div className="text-base font-black text-white mt-1">{roi.toFixed(2)}%</div> 
+                    </div>
+                  </div>
+                  <div className="xl:col-span-6 flex flex-wrap gap-2 text-xs content-start"> 
+                    <button onClick={()=>setAnalyticsPeriod('week')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'week' ? 'bg-blue-600 text-white' : ''}`}>Неделя</button>
+                    <button onClick={()=>setAnalyticsPeriod('month')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'month' ? 'bg-blue-600 text-white' : ''}`}>Месяц</button>
+                    <button onClick={()=>setAnalyticsPeriod('quarter')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'quarter' ? 'bg-blue-600 text-white' : ''}`}>Квартал</button>
+                    <button onClick={()=>setAnalyticsPeriod('custom')} className={`px-3 py-1 rounded-lg border ${analyticsPeriod === 'custom' ? 'bg-blue-600 text-white' : ''}`}>Период</button>
+                    <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} className="border rounded px-2 py-1"/>
+                    <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} className="border rounded px-2 py-1"/>
+                  </div>
+                  <div className="xl:col-span-2 flex xl:justify-end"> 
+                    <button className="w-full xl:w-auto px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50 shadow-sm"> 
+                      <Download size={16}/> Выгрузить отчет
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -2450,7 +2460,7 @@ export default function OmniHubSystem() {
                     <div className="text-slate-500 flex items-center gap-2 flex-wrap">
                       <span>{new Date(l.created_at).toLocaleString()}</span>
                       {l.source === 'guide' && <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 font-black text-[10px]">ПОДДЕРЖКА</span>}
-                      {l.source === 'polygon' && <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-black text-[10px]">ТЕСТ / ПОЛИГОН</span>}
+                      {l.source === 'polygon' && <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-black text-[10px]">ПОЛИГОН</span>}
                       {!['guide', 'polygon'].includes(l.source) && <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-black text-[10px]">{l.source}</span>}
                     </div>
                     <div className="text-slate-700">{l.user_message}</div>
@@ -2495,7 +2505,7 @@ export default function OmniHubSystem() {
             {guideChat.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] p-3.5 rounded-2xl text-[11px] font-bold shadow-sm leading-relaxed ${m.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-100 rounded-tl-none text-slate-800'}`}>
-                  {m.content}
+                  {sanitizePlainText(m.content)}
                 </div>
               </div>
             ))}

@@ -22,6 +22,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { messages, systemPrompt, logToChatLogs, userId, source } = body;
+    const normalizedSource = source === 'polygon' ? 'polygon' : 'guide';
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Неверный формат сообщений' }, { status: 400 });
@@ -109,7 +110,7 @@ export async function POST(req: Request) {
       const latestUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content ?? null;
       const { error: logError } = await supabaseAdmin.from('chat_logs').insert({
         user_id: userId ?? null,
-        source: source ?? 'guide',
+        source: normalizedSource,
         user_message: latestUserMessage,
         bot_response: content,
         prompt_tokens: promptTokens,
