@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 const supabaseAdmin =
-  process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-    ? createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
+  supabaseUrl && supabaseServiceRoleKey
+    ? createClient(supabaseUrl, supabaseServiceRoleKey)
     : null;
 
 export async function POST(req: Request) {
@@ -102,7 +101,11 @@ export async function POST(req: Request) {
     const revenueRub = costRub * markup;
     const profitRub = revenueRub - costRub;
 
-    if (supabaseAdmin) {
+    if (logToChatLogs && !supabaseAdmin) {
+      console.error('Supabase logging is enabled, but SUPABASE URL / SERVICE ROLE KEY are not configured.');
+    }
+
+    if (logToChatLogs && supabaseAdmin) {
       const latestUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content ?? null;
       const { error: logError } = await supabaseAdmin.from('chat_logs').insert({
         user_id: userId ?? null,
