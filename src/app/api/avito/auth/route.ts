@@ -25,7 +25,8 @@ export async function GET(request: Request) {
     `?response_type=code` +
     `&client_id=${encodeURIComponent(clientId)}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&state=${encodeURIComponent(agentId)}`;
+    `&state=${encodeURIComponent(agentId)}` +
+    `&redirect_uri=${encodeURIComponent('https://omnihub.su')}`;
 
   return NextResponse.redirect(avitoAuthUrl);
 }

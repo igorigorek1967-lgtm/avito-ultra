@@ -32,10 +32,9 @@ export async function POST(req: Request) {
 
     const openRouterHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey.trim()}`,
-      'X-Title': 'OmniHub',
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       'HTTP-Referer': 'https://omnihub.su',
-      Referer: 'https://omnihub.su',
+      'X-Title': 'OmniHub Business',
     };
     console.log('OpenRouter headers:', JSON.stringify(openRouterHeaders, null, 2));
 

@@ -33,14 +33,11 @@ export async function POST(req: Request) {
       ...messages,
     ];
 
-    const siteUrl = process.env.OPENROUTER_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
     const openRouterHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey.trim()}`,
-      'X-Title': 'OmniHub',
-      'HTTP-Referer': siteUrl,
-      Referer: siteUrl,
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'HTTP-Referer': 'https://omnihub.su',
+      'X-Title': 'OmniHub Business',
     };
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
